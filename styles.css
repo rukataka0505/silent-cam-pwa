@@ -1,0 +1,574 @@
+:root {
+  color-scheme: dark;
+  --bg: #050607;
+  --panel: rgba(12, 14, 16, 0.84);
+  --panel-strong: rgba(18, 21, 23, 0.94);
+  --text: #f7faf9;
+  --muted: #a7b0ad;
+  --line: rgba(255, 255, 255, 0.16);
+  --accent: #35d6c7;
+  --danger: #ff695f;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  font: inherit;
+}
+
+.app-shell {
+  position: relative;
+  width: 100vw;
+  height: 100dvh;
+  min-height: 640px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 40%, #15191a 0, #050607 58%);
+}
+
+.camera-stage {
+  position: absolute;
+  inset: 0 0 118px;
+  background: #090b0c;
+}
+
+.preview,
+.capture-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.preview {
+  object-fit: cover;
+  transform: scale(var(--camera-zoom, 1));
+  transform-origin: center;
+  background: #0b0d0e;
+}
+
+.capture-canvas {
+  display: none;
+}
+
+.empty-state {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  padding: calc(var(--safe-top) + 40px) 26px 170px;
+  text-align: center;
+  background:
+    linear-gradient(180deg, rgba(5, 6, 7, 0.46), rgba(5, 6, 7, 0.88)),
+    radial-gradient(circle at center, rgba(53, 214, 199, 0.12), transparent 42%);
+}
+
+.empty-state.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+
+.brand-mark {
+  display: grid;
+  width: 70px;
+  height: 70px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 18px 70px rgba(0, 0, 0, 0.34);
+}
+
+.brand-mark svg {
+  width: 38px;
+  height: 38px;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.empty-state h1 {
+  margin: 8px 0 0;
+  font-size: 34px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.empty-state p {
+  max-width: 310px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.primary-action {
+  min-width: 180px;
+  height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--text);
+  color: #080a0b;
+  font-size: 15px;
+  font-weight: 760;
+  box-shadow: 0 16px 50px rgba(255, 255, 255, 0.16);
+}
+
+.top-bar {
+  position: absolute;
+  top: calc(var(--safe-top) + 12px);
+  left: 14px;
+  right: 14px;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  pointer-events: none;
+}
+
+.top-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-button,
+.review-icon {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  color: var(--text);
+  background: rgba(8, 10, 11, 0.55);
+  backdrop-filter: blur(18px);
+}
+
+.icon-button {
+  width: 52px;
+  min-height: 52px;
+  border-radius: 18px;
+  pointer-events: auto;
+}
+
+.stack-button {
+  gap: 3px;
+  padding: 7px 4px 6px;
+}
+
+.icon-button svg,
+.review-icon svg,
+.install-status svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.stack-button span {
+  font-size: 10px;
+  font-weight: 720;
+  line-height: 1;
+}
+
+.install-status {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  max-width: 170px;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid rgba(53, 214, 199, 0.36);
+  border-radius: 999px;
+  color: #cffffa;
+  background: rgba(10, 45, 42, 0.38);
+  font-size: 11px;
+  font-weight: 730;
+  white-space: nowrap;
+  pointer-events: auto;
+  backdrop-filter: blur(18px);
+}
+
+.install-status svg {
+  width: 15px;
+  height: 15px;
+}
+
+.focus-reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  width: 86px;
+  height: 86px;
+  transform: translate(-50%, -50%);
+  opacity: 0.56;
+  pointer-events: none;
+}
+
+.focus-reticle span {
+  position: absolute;
+  width: 21px;
+  height: 21px;
+  border-color: rgba(255, 255, 255, 0.78);
+}
+
+.focus-reticle span:nth-child(1) {
+  top: 0;
+  left: 0;
+  border-top: 2px solid;
+  border-left: 2px solid;
+}
+
+.focus-reticle span:nth-child(2) {
+  top: 0;
+  right: 0;
+  border-top: 2px solid;
+  border-right: 2px solid;
+}
+
+.focus-reticle span:nth-child(3) {
+  bottom: 0;
+  right: 0;
+  border-right: 2px solid;
+  border-bottom: 2px solid;
+}
+
+.focus-reticle span:nth-child(4) {
+  bottom: 0;
+  left: 0;
+  border-bottom: 2px solid;
+  border-left: 2px solid;
+}
+
+.focus-reticle i {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+  transform: translate(-50%, -50%);
+}
+
+.zoom-control {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  z-index: 3;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(6, 8, 9, 0.62);
+  transform: translateX(-50%);
+  backdrop-filter: blur(18px);
+}
+
+.zoom-option {
+  width: 38px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.zoom-option.active {
+  color: #081010;
+  background: var(--accent);
+}
+
+.camera-message {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 72px;
+  z-index: 4;
+  min-height: 0;
+  padding: 0;
+  color: #111;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 720;
+  pointer-events: none;
+}
+
+.camera-message.visible {
+  min-height: 38px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(247, 250, 249, 0.92);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.34);
+}
+
+.camera-message.error {
+  color: #fff;
+  background: rgba(255, 105, 95, 0.9);
+}
+
+.control-deck {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 6;
+  display: grid;
+  grid-template-columns: 72px 1fr 72px;
+  align-items: center;
+  height: calc(118px + var(--safe-bottom));
+  padding: 14px 24px calc(14px + var(--safe-bottom));
+  background: linear-gradient(180deg, rgba(5, 6, 7, 0.08), rgba(5, 6, 7, 0.96) 25%, #050607);
+}
+
+.latest-thumb {
+  width: 58px;
+  height: 58px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 720;
+}
+
+.latest-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.shutter-button {
+  justify-self: center;
+  width: 78px;
+  height: 78px;
+  border: 4px solid #f7faf9;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.12);
+}
+
+.shutter-button::after {
+  content: "";
+  display: block;
+  width: 58px;
+  height: 58px;
+  margin: 6px auto;
+  border-radius: 50%;
+  background: #f7faf9;
+  transition: transform 90ms ease;
+}
+
+.shutter-button:active::after {
+  transform: scale(0.88);
+}
+
+.mode-button {
+  justify-self: end;
+  width: 64px;
+  height: 38px;
+  border: 1px solid rgba(53, 214, 199, 0.4);
+  border-radius: 999px;
+  background: rgba(53, 214, 199, 0.12);
+  color: #d6fffb;
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.gallery-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(118px + var(--safe-bottom));
+  z-index: 5;
+  height: 126px;
+  padding: 8px 16px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px 24px 0 0;
+  background: rgba(9, 11, 12, 0.74);
+  transform: translateY(126px);
+  transition: transform 220ms ease;
+  backdrop-filter: blur(22px);
+}
+
+.gallery-panel.empty {
+  display: none;
+}
+
+.gallery-panel.open {
+  transform: translateY(0);
+}
+
+.panel-handle {
+  width: 42px;
+  height: 4px;
+  margin: 0 auto 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.gallery-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 9px;
+}
+
+.gallery-header h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 780;
+}
+
+.gallery-header button {
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 730;
+}
+
+.gallery-list {
+  display: flex;
+  min-height: 58px;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.gallery-list::-webkit-scrollbar {
+  display: none;
+}
+
+.gallery-item {
+  flex: 0 0 auto;
+  width: 58px;
+  height: 58px;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.review-dialog {
+  width: min(100vw, 520px);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  background: #050607;
+}
+
+.review-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.78);
+}
+
+.review-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.review-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.review-actions {
+  position: absolute;
+  top: calc(var(--safe-top) + 14px);
+  left: 14px;
+  right: 14px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.review-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 17px;
+}
+
+@media (min-width: 620px) {
+  body {
+    display: grid;
+    place-items: center;
+  }
+
+  .app-shell {
+    width: min(420px, 100vw);
+    height: min(860px, 100dvh);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 34px;
+    box-shadow: 0 32px 90px rgba(0, 0, 0, 0.5);
+  }
+}
+
+@media (max-height: 650px) {
+  .gallery-panel {
+    display: none;
+  }
+
+  .camera-stage {
+    inset-bottom: 104px;
+  }
+
+  .control-deck {
+    height: calc(104px + var(--safe-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

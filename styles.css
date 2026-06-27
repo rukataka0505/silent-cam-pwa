@@ -408,6 +408,12 @@ button {
   font-weight: 780;
 }
 
+.mode-button.active {
+  border-color: rgba(247, 250, 249, 0.7);
+  background: var(--accent);
+  color: #07100f;
+}
+
 .gallery-panel {
   position: absolute;
   left: 0;

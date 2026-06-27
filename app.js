@@ -22,12 +22,15 @@ const closeReviewButton = document.querySelector("#closeReviewButton");
 const downloadReviewLink = document.querySelector("#downloadReviewLink");
 
 const STORAGE_KEY = "silent-cam-shots";
+const AUTO_SHARE_KEY = "silent-cam-auto-share";
 const MAX_SHOTS = 24;
 
 let stream = null;
 let facingMode = "environment";
 let flashEnabled = false;
 let captures = loadCaptures();
+let currentReviewCapture = null;
+let autoShareAfterCapture = localStorage.getItem(AUTO_SHARE_KEY) === "true";
 let lastMessageTimer = null;
 
 const isStandalone =
@@ -43,16 +46,18 @@ function init() {
   renderInstallStatus();
   renderGallery();
   renderSupportHint();
+  renderAutoShareMode();
 
   startButton.addEventListener("click", startCamera);
   shutterButton.addEventListener("click", capturePhoto);
   switchButton.addEventListener("click", switchCamera);
   flashButton.addEventListener("click", toggleTorch);
-  downloadLastButton.addEventListener("click", downloadLatest);
+  downloadLastButton.addEventListener("click", saveLatestToPhotos);
   latestThumb.addEventListener("click", openLatest);
   clearButton.addEventListener("click", clearCaptures);
   closeReviewButton.addEventListener("click", () => reviewDialog.close());
-  modeButton.addEventListener("click", () => showMessage("写真モードです"));
+  modeButton.addEventListener("click", toggleAutoShareMode);
+  downloadReviewLink.addEventListener("click", saveReviewToPhotos);
 
   zoomButtons.forEach((button) => {
     button.addEventListener("click", () => setZoom(Number(button.dataset.zoom), button));
@@ -144,7 +149,7 @@ function syncTorchAvailability() {
   flashLabel.textContent = flashEnabled ? "オン" : "オフ";
 }
 
-function capturePhoto() {
+async function capturePhoto() {
   if (!stream || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
     showError("先にカメラを起動してください");
     return;
@@ -166,10 +171,17 @@ function capturePhoto() {
   context.restore();
 
   const image = canvas.toDataURL("image/jpeg", 0.92);
-  captures = [{ id: crypto.randomUUID(), image, createdAt: Date.now() }, ...captures].slice(0, MAX_SHOTS);
+  const capture = { id: crypto.randomUUID(), image, createdAt: Date.now() };
+  captures = [capture, ...captures].slice(0, MAX_SHOTS);
   saveCaptures();
   renderGallery();
   pulseShutter();
+
+  if (autoShareAfterCapture) {
+    await shareCapture(capture, { auto: true });
+    return;
+  }
+
   showMessage("撮影しました");
 }
 
@@ -227,6 +239,7 @@ function openLatest() {
 }
 
 function openReview(capture) {
+  currentReviewCapture = capture;
   reviewImage.src = capture.image;
   downloadReviewLink.href = capture.image;
   downloadReviewLink.download = filenameFor(capture.createdAt);
@@ -238,16 +251,82 @@ function openReview(capture) {
   }
 }
 
-function downloadLatest() {
+async function saveLatestToPhotos() {
   if (!captures.length) {
     showMessage("まだ撮影していません");
     return;
   }
 
+  await shareCapture(captures[0]);
+}
+
+async function saveReviewToPhotos(event) {
+  event.preventDefault();
+
+  if (!currentReviewCapture) {
+    showMessage("保存する写真がありません");
+    return;
+  }
+
+  await shareCapture(currentReviewCapture);
+}
+
+async function shareCapture(capture, options = {}) {
+  const file = dataUrlToFile(capture.image, filenameFor(capture.createdAt));
+  const shareData = {
+    files: [file],
+    title: "Silent Cam",
+  };
+
+  if (navigator.canShare?.(shareData) && navigator.share) {
+    try {
+      await navigator.share(shareData);
+      showMessage("共有を開きました");
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        showMessage("共有を閉じました");
+        return;
+      }
+      showError("写真保存を開けませんでした");
+    }
+  }
+
+  downloadCapture(capture);
+  showMessage(options.auto ? "共有非対応のためファイル保存しました" : "ファイルに保存しました");
+}
+
+function downloadCapture(capture) {
   const link = document.createElement("a");
-  link.href = captures[0].image;
-  link.download = filenameFor(captures[0].createdAt);
+  link.href = capture.image;
+  link.download = filenameFor(capture.createdAt);
   link.click();
+}
+
+function dataUrlToFile(dataUrl, filename) {
+  const [header, base64] = dataUrl.split(",");
+  const mime = header.match(/data:(.*?);base64/)?.[1] || "image/jpeg";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return new File([bytes], filename, { type: mime });
+}
+
+function toggleAutoShareMode() {
+  autoShareAfterCapture = !autoShareAfterCapture;
+  localStorage.setItem(AUTO_SHARE_KEY, String(autoShareAfterCapture));
+  renderAutoShareMode();
+  showMessage(autoShareAfterCapture ? "撮影後に写真保存を開きます" : "手動保存にしました");
+}
+
+function renderAutoShareMode() {
+  modeButton.textContent = autoShareAfterCapture ? "自動" : "手動";
+  modeButton.setAttribute("aria-pressed", String(autoShareAfterCapture));
+  modeButton.classList.toggle("active", autoShareAfterCapture);
 }
 
 function clearCaptures() {

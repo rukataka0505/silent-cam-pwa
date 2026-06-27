@@ -1,5 +1,6 @@
 const video = document.querySelector("#preview");
 const canvas = document.querySelector("#captureCanvas");
+const cameraStage = document.querySelector(".camera-stage");
 const emptyState = document.querySelector("#emptyState");
 const supportText = document.querySelector("#supportText");
 const startButton = document.querySelector("#startButton");
@@ -24,6 +25,8 @@ const downloadReviewLink = document.querySelector("#downloadReviewLink");
 const STORAGE_KEY = "silent-cam-shots";
 const AUTO_SHARE_KEY = "silent-cam-auto-share";
 const MAX_SHOTS = 24;
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 4;
 
 let stream = null;
 let facingMode = "environment";
@@ -31,6 +34,9 @@ let flashEnabled = false;
 let captures = loadCaptures();
 let currentReviewCapture = null;
 let autoShareAfterCapture = localStorage.getItem(AUTO_SHARE_KEY) === "true";
+let currentZoom = 1;
+let pinchStartDistance = 0;
+let pinchStartZoom = 1;
 let lastMessageTimer = null;
 
 const isStandalone =
@@ -62,6 +68,11 @@ function init() {
   zoomButtons.forEach((button) => {
     button.addEventListener("click", () => setZoom(Number(button.dataset.zoom), button));
   });
+
+  cameraStage.addEventListener("touchstart", startPinchZoom, { passive: false });
+  cameraStage.addEventListener("touchmove", updatePinchZoom, { passive: false });
+  cameraStage.addEventListener("touchend", finishPinchZoom);
+  cameraStage.addEventListener("touchcancel", finishPinchZoom);
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && stream) {
@@ -157,17 +168,18 @@ async function capturePhoto() {
 
   const width = video.videoWidth;
   const height = video.videoHeight;
+  const crop = getVisibleCrop(width, height);
   const context = canvas.getContext("2d", { alpha: false });
 
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = crop.width;
+  canvas.height = crop.height;
 
   context.save();
   if (facingMode === "user") {
-    context.translate(width, 0);
+    context.translate(crop.width, 0);
     context.scale(-1, 1);
   }
-  context.drawImage(video, 0, 0, width, height);
+  context.drawImage(video, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
   context.restore();
 
   const image = canvas.toDataURL("image/jpeg", 0.92);
@@ -336,9 +348,91 @@ function clearCaptures() {
   showMessage("消去しました");
 }
 
-function setZoom(value, activeButton) {
-  document.documentElement.style.setProperty("--camera-zoom", value);
-  zoomButtons.forEach((button) => button.classList.toggle("active", button === activeButton));
+function setZoom(value, activeButton = null, options = {}) {
+  currentZoom = clamp(value, MIN_ZOOM, MAX_ZOOM);
+  document.documentElement.style.setProperty("--camera-zoom", currentZoom.toFixed(2));
+  syncZoomButtons(activeButton);
+
+  if (options.announce !== false) {
+    showMessage(`${formatZoom(currentZoom)}x`);
+  }
+}
+
+function syncZoomButtons(activeButton) {
+  const selectedButton = activeButton || nearestZoomButton(currentZoom);
+  zoomButtons.forEach((button) => button.classList.toggle("active", button === selectedButton));
+}
+
+function nearestZoomButton(value) {
+  return zoomButtons.reduce((closest, button) => {
+    const buttonDistance = Math.abs(Number(button.dataset.zoom) - value);
+    const closestDistance = Math.abs(Number(closest.dataset.zoom) - value);
+    return buttonDistance < closestDistance ? button : closest;
+  }, zoomButtons[0]);
+}
+
+function startPinchZoom(event) {
+  if (event.touches.length !== 2 || isInteractiveTarget(event.target)) return;
+
+  event.preventDefault();
+  pinchStartDistance = touchDistance(event.touches[0], event.touches[1]);
+  pinchStartZoom = currentZoom;
+}
+
+function updatePinchZoom(event) {
+  if (event.touches.length !== 2 || pinchStartDistance === 0) return;
+
+  event.preventDefault();
+  const nextDistance = touchDistance(event.touches[0], event.touches[1]);
+  setZoom(pinchStartZoom * (nextDistance / pinchStartDistance), null, { announce: false });
+}
+
+function finishPinchZoom(event) {
+  if (event.touches.length >= 2 || pinchStartDistance === 0) return;
+
+  pinchStartDistance = 0;
+  pinchStartZoom = currentZoom;
+  showMessage(`${formatZoom(currentZoom)}x`);
+}
+
+function touchDistance(firstTouch, secondTouch) {
+  return Math.hypot(firstTouch.clientX - secondTouch.clientX, firstTouch.clientY - secondTouch.clientY);
+}
+
+function isInteractiveTarget(target) {
+  return target instanceof Element && Boolean(target.closest("button, a, dialog"));
+}
+
+function getVisibleCrop(videoWidth, videoHeight) {
+  const stageRect = cameraStage.getBoundingClientRect();
+  const targetAspect = stageRect.width > 0 && stageRect.height > 0 ? stageRect.width / stageRect.height : videoWidth / videoHeight;
+  const videoAspect = videoWidth / videoHeight;
+  let baseWidth = videoWidth;
+  let baseHeight = videoHeight;
+
+  if (videoAspect > targetAspect) {
+    baseWidth = videoHeight * targetAspect;
+  } else {
+    baseHeight = videoWidth / targetAspect;
+  }
+
+  const cropWidth = Math.max(1, Math.round(baseWidth / currentZoom));
+  const cropHeight = Math.max(1, Math.round(baseHeight / currentZoom));
+
+  return {
+    x: Math.round((videoWidth - cropWidth) / 2),
+    y: Math.round((videoHeight - cropHeight) / 2),
+    width: cropWidth,
+    height: cropHeight,
+  };
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function formatZoom(value) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
 function getVideoTrack() {

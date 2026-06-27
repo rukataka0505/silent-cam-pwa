@@ -49,6 +49,8 @@ button {
   position: absolute;
   inset: 0 0 118px;
   background: #090b0c;
+  touch-action: none;
+  user-select: none;
 }
 
 .preview,

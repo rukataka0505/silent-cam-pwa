@@ -1,4 +1,4 @@
-const CACHE_NAME = "silent-cam-v6";
+const CACHE_NAME = "silent-cam-v7";
 const ASSETS = [
   "./",
   "./index.html",

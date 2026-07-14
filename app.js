@@ -313,7 +313,6 @@ async function shareCapture(capture, options = {}) {
   const file = dataUrlToFile(capture.image, filenameFor(capture.createdAt));
   const shareData = {
     files: [file],
-    title: "Silent Cam",
   };
 
   if (navigator.canShare?.(shareData) && navigator.share) {
